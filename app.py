@@ -230,5 +230,42 @@ def register_or_update_patient():
         }), 400
 
 
+# API route to analyze medical history text
+@app.route('/api/patient/analyze_medical_history', methods=['POST'])
+def analyze_medical_history_api():
+    try:
+        # Get the medical history text from the request body
+        data = request.json
+        medical_history_text = data.get('medical_history', '')
+        
+        if not medical_history_text:
+            return jsonify({
+                "status": "error",
+                "message": "Medical history text is required"
+            }), 400
+
+        # Analyze the medical history text
+        medical_history_data = analyze_medical_history(medical_history_text)
+
+        # Construct the response with the required format
+        response = {
+            "status": "success",
+            "message": "Medical history analyzed successfully",
+            "medical_information": {
+                "medical_history_text": medical_history_text,
+                "medical_history_data": medical_history_data
+            }
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=9000)
