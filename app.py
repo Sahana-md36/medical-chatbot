@@ -97,6 +97,24 @@ def analyze_medical_history(medical_history_text):
             "current_medications": []
         }
 
+def get_updated_fields(old_data, new_data):
+    """Compare old and new data to identify updated fields"""
+    updates = {}
+    
+    if not old_data:
+        return {"all": "New patient record created"}
+        
+    for category in ['personal_information', 'demographic_information', 'medical_history']:
+        if category in new_data and category in old_data:
+            if new_data[category] != old_data[category]:
+                updates[category] = {
+                    k: new_data[category][k]
+                    for k in new_data[category]
+                    if k not in old_data[category] or new_data[category][k] != old_data[category][k]
+                }
+    
+    return updates
+
 # Function to save or update patient
 def save_patient(patient_info, patient_id=None):
     global patient_id_counter
@@ -157,6 +175,9 @@ def register_or_update_patient():
             # Create a new patient_info object from the request data
             patient_info = existing_patient.copy()
 
+            # Store old data for comparison
+            old_data = existing_patient.copy()
+
             # Update personal information (excluding email, handled by front-end)
             patient_info['personal_information'] = personal_information
             patient_info['demographic_information'] = data.get('demographic_information', {})
@@ -168,8 +189,13 @@ def register_or_update_patient():
             # Save the updated patient record
             updated_patient = save_patient(patient_info, patient_id)
             
+            # Get the list of updated fields
+            updated_fields = get_updated_fields(old_data, updated_patient)
+            
             return jsonify({
                 "status": "success",
+                "message": "Patient record updated successfully",
+                "updates": updated_fields,
                 "data": {
                     "patient_info": updated_patient
                 }
@@ -191,6 +217,7 @@ def register_or_update_patient():
             
             return jsonify({
                 "status": "success",
+                "message": f"New patient record created successfully for {personal_information['first_name']} {personal_information['last_name']}",
                 "data": {
                     "patient_info": new_patient
                 }
