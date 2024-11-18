@@ -1,3 +1,6 @@
 .venv/
 .env
 __pycache__/
+app1.py
+app2.py
+app3.py
