@@ -26,9 +26,89 @@ def clean_response_text(response_text):
 
 #Function to call personal information text using LLM 
 def analyze_personal_info(personal_info_text: str) -> dict:
+    """Analyze personal information text and return structured data."""
+    prompt = f"""
+    You are a patient registration information analyzer. Given the following patient personal information text, please extract and structure the information in a JSON format.
+
+    If the text is irrelevant or does not resemble valid personal information, respond with:
+    "Sorry, I don't have an answer for this question."
+
+    Personal Information Text:
+    {personal_info_text}
+
+    Return the response in **exactly** this JSON structure:
+    {{
+            "name": {{
+                "first_name": "",
+                "middle_name": "",
+                "last_name": ""
+            }},
+            "address": {{
+                "line1": "",
+                "line2": "",
+                "city": "",
+                "state": "",
+                "zip": ""
+            }},
+            "contact_info": {{
+                "email": "",
+                "phone": ""
+            }},
+            "specifications": {{
+                "gender": "",
+                "date_of_birth": ""
+            }}
+    }}
+    """
+    try:
+        response = model.generate_content(prompt)
+        cleaned_response = clean_response_text(response.text)
+
+        # Parse the JSON response
+        analyzed_data = json.loads(cleaned_response)
+
+        # Ensure no dummy values exist; replace them with defaults
+        default_structure = {
+            "name": {"first_name": "", "middle_name": "", "last_name": ""},
+            "address": {"line1": "", "line2": "", "city": "", "state": "", "zip": ""},
+            "contact_info": {"email": "", "phone": ""},
+            "specifications": {"gender": "", "date_of_birth": ""}
+        }
+
+        # Recursive function to sanitize and enforce defaults
+        def sanitize(data, defaults):
+            if isinstance(defaults, dict):
+                return {key: sanitize(data.get(key, ""), value) for key, value in defaults.items()}
+            if isinstance(defaults, list):
+                return data if isinstance(data, list) else []
+            return data if data and not isinstance(data, str) or data.strip() else ""
+
+        return sanitize(analyzed_data, default_structure)
+
+    except json.JSONDecodeError as e:
+        print(f"JSON decoding error: {e}")
+        return {
+            "name": {"first_name": "", "middle_name": "", "last_name": ""},
+            "address": {"line1": "", "line2": "", "city": "", "state": "", "zip": ""},
+            "contact_info": {"email": "", "phone": ""},
+            "specifications": {"gender": "", "date_of_birth": ""}
+        }
+    except Exception as e:
+        print(f"Error in analyzing personal information: {str(e)}")
+        return {
+            "name": {"first_name": "", "middle_name": "", "last_name": ""},
+            "address": {"line1": "", "line2": "", "city": "", "state": "", "zip": ""},
+            "contact_info": {"email": "", "phone": ""},
+            "specifications": {"gender": "", "date_of_birth": ""}
+        }
+
+#def analyze_personal_info(personal_info_text: str) -> dict:
     """Analyze personal information text and return structured data"""
     prompt = f"""
     You are a patient registration information analyzer. Given the following patient personal information text, please extract and structure the information in a JSON format.
+    
+    If the text is irrelevant or does not resemble valid personal information, respond with:
+"Sorry, I don't have an answer for this question."
     
     Personal Information Text:
     {personal_info_text}
@@ -70,6 +150,10 @@ def analyze_personal_info(personal_info_text: str) -> dict:
 def analyze_medical_history(medical_history_text):
     prompt = f"""
     You are a medical record analyzer. Given the following patient medical history text, please extract and categorize the information in a structured JSON format.
+    If the text is irrelevant or does not resemble valid personal information, respond with:
+    "Sorry, I don't have an answer for this question."
+
+    If the information is missing, leave it empty.
     
     Medical History Text:
     {medical_history_text}
@@ -139,6 +223,8 @@ def analyze_medical_history(medical_history_text):
 def analyze_demographic_info(demographic_info_text):
     prompt = f"""
     You are a healthcare provider demographic information analyzer. Given the following text, please extract and structure demographic information such as marital status, occupation, ethnicity, and preferred language.
+    If the text is irrelevant or does not resemble valid personal information, respond with:
+"Sorry, I don't have an answer for this question."
 
     If the information is missing, leave it empty. For "preferred_language", return an array of languages if multiple languages are mentioned.
 
